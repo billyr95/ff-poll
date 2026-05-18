@@ -1,8 +1,17 @@
 -- Enable UUID extension
 create extension if not exists "uuid-ossp";
 
+-- Drop everything cleanly first
+drop trigger if exists on_auth_user_created on auth.users;
+drop function if exists handle_new_user();
+drop view if exists vote_tallies;
+drop table if exists votes cascade;
+drop table if exists suggestions cascade;
+drop table if exists rules cascade;
+drop table if exists profiles cascade;
+
 -- Profiles (linked to auth.users)
-create table if not exists profiles (
+create table profiles (
   id uuid references auth.users on delete cascade primary key,
   username text unique,
   full_name text,
@@ -35,13 +44,12 @@ begin
 end;
 $$ language plpgsql security definer;
 
-drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure handle_new_user();
 
 -- Rules
-create table if not exists rules (
+create table rules (
   id uuid default gen_random_uuid() primary key,
   title text not null,
   description text,
@@ -59,8 +67,8 @@ create policy "Rules are viewable by everyone"
 create policy "Authenticated users can insert rules"
   on rules for insert with check (auth.uid() is not null);
 
--- Suggestions (proposed changes or new rules)
-create table if not exists suggestions (
+-- Suggestions
+create table suggestions (
   id uuid default gen_random_uuid() primary key,
   rule_id uuid references rules(id) on delete cascade,
   title text not null,
@@ -80,7 +88,7 @@ create policy "Authenticated users can create suggestions"
   on suggestions for insert with check (auth.uid() is not null);
 
 -- Votes
-create table if not exists votes (
+create table votes (
   id uuid default gen_random_uuid() primary key,
   suggestion_id uuid references suggestions(id) on delete cascade,
   user_id uuid references profiles(id) on delete cascade,
@@ -104,7 +112,7 @@ create policy "Users can delete their own vote"
   on votes for delete using (auth.uid() = user_id);
 
 -- Vote tallies view
-create or replace view vote_tallies as
+create view vote_tallies as
 select
   suggestion_id,
   count(*) filter (where vote = 'yes') as yes_count,
@@ -113,11 +121,10 @@ select
 from votes
 group by suggestion_id;
 
--- Seed some example rules
+-- Seed example rules
 insert into rules (title, description, category) values
   ('Scoring: PPR', 'Point Per Reception scoring. Each reception is worth 1 point.', 'Scoring'),
   ('Roster Size: 15 players', 'Each team carries 15 players on their roster at all times.', 'Roster'),
   ('Draft: Snake Draft', 'Draft order reverses each round (snake format).', 'Draft'),
   ('Trades: Allowed until Week 10', 'Trades are allowed through the end of Week 10.', 'Trades'),
-  ('Playoffs: Top 4 teams', 'Top 4 teams by record make the playoffs starting Week 15.', 'Playoffs')
-on conflict do nothing;
+  ('Playoffs: Top 4 teams', 'Top 4 teams by record make the playoffs starting Week 15.', 'Playoffs');

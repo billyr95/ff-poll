@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import SuggestionForm from './SuggestionForm'
 import AddRuleForm from './AddRuleForm'
 import VoteButtons from './VoteButtons'
+import PollCard, { type Poll } from './PollCard'
+import CreatePollForm from './CreatePollForm'
 
 type Rule = {
   id: string
@@ -35,23 +37,32 @@ type MyVote = {
   vote: string
 }
 
+type MyPollVote = {
+  poll_id: string
+  option_id: string
+}
+
 interface Props {
   rules: Rule[]
   suggestions: Suggestion[]
   myVotes: MyVote[]
+  polls: Poll[]
+  myPollVotes: MyPollVote[]
   userId: string
   isAdmin: boolean
 }
 
-export default function RulesClient({ rules, suggestions, myVotes, userId, isAdmin }: Props) {
-  const [activeTab, setActiveTab] = useState<'rules' | 'suggestions'>('rules')
+export default function RulesClient({ rules, suggestions, myVotes, polls, myPollVotes, userId, isAdmin }: Props) {
+  const [activeTab, setActiveTab] = useState<'rules' | 'suggestions' | 'polls'>('polls')
   const [showForm, setShowForm] = useState(false)
   const [showAddRule, setShowAddRule] = useState(false)
+  const [showCreatePoll, setShowCreatePoll] = useState(false)
   const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
   const myVoteMap = Object.fromEntries(myVotes.map(v => [v.suggestion_id, v.vote]))
+  const myPollVoteMap = Object.fromEntries(myPollVotes.map(v => [v.poll_id, v.option_id]))
 
   const categories = Array.from(new Set(rules.map(r => r.category)))
 
@@ -74,11 +85,14 @@ export default function RulesClient({ rules, suggestions, myVotes, userId, isAdm
     router.refresh()
   }
 
+  const openPolls = polls.filter(p => p.status === 'open')
+  const closedPolls = polls.filter(p => p.status === 'closed')
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div className="flex gap-1 bg-gray-200 rounded-lg p-1">
-          {(['rules', 'suggestions'] as const).map(tab => (
+          {(['polls', 'rules', 'suggestions'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -91,7 +105,15 @@ export default function RulesClient({ rules, suggestions, myVotes, userId, isAdm
           ))}
         </div>
         <div className="flex gap-2">
-          {isAdmin && (
+          {isAdmin && activeTab === 'polls' && (
+            <button
+              onClick={() => setShowCreatePoll(true)}
+              className="bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            >
+              + Create poll
+            </button>
+          )}
+          {isAdmin && activeTab === 'rules' && (
             <button
               onClick={() => setShowAddRule(true)}
               className="bg-gray-800 hover:bg-gray-900 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
@@ -99,14 +121,51 @@ export default function RulesClient({ rules, suggestions, myVotes, userId, isAdm
               + Add rule
             </button>
           )}
-          <button
-            onClick={() => openSuggestionForm()}
-            className="bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-          >
-            + Submit suggestion
-          </button>
+          {activeTab === 'suggestions' && (
+            <button
+              onClick={() => openSuggestionForm()}
+              className="bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            >
+              + Submit suggestion
+            </button>
+          )}
         </div>
       </div>
+
+      {activeTab === 'polls' && (
+        <div className="space-y-4">
+          {polls.length === 0 && (
+            <p className="text-gray-500 text-sm text-center py-12">No polls yet.</p>
+          )}
+          {openPolls.map(poll => (
+            <PollCard
+              key={poll.id}
+              poll={poll}
+              myVotedOptionId={myPollVoteMap[poll.id]}
+              userId={userId}
+              isAdmin={isAdmin}
+              onRefresh={() => router.refresh()}
+            />
+          ))}
+          {closedPolls.length > 0 && (
+            <>
+              {openPolls.length > 0 && (
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider pt-2">Closed</p>
+              )}
+              {closedPolls.map(poll => (
+                <PollCard
+                  key={poll.id}
+                  poll={poll}
+                  myVotedOptionId={myPollVoteMap[poll.id]}
+                  userId={userId}
+                  isAdmin={isAdmin}
+                  onRefresh={() => router.refresh()}
+                />
+              ))}
+            </>
+          )}
+        </div>
+      )}
 
       {activeTab === 'rules' && (
         <div className="space-y-6">
@@ -206,6 +265,17 @@ export default function RulesClient({ rules, suggestions, myVotes, userId, isAdm
           onClose={() => setShowAddRule(false)}
           onSubmit={() => {
             setShowAddRule(false)
+            router.refresh()
+          }}
+        />
+      )}
+
+      {showCreatePoll && (
+        <CreatePollForm
+          userId={userId}
+          onClose={() => setShowCreatePoll(false)}
+          onSubmit={() => {
+            setShowCreatePoll(false)
             router.refresh()
           }}
         />

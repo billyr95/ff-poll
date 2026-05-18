@@ -26,6 +26,16 @@ export default async function Home() {
     .select('suggestion_id, vote')
     .eq('user_id', user.id)
 
+  const { data: polls } = await supabase
+    .from('polls')
+    .select('*, poll_options(id, text, sort_order, poll_votes(id, user_id))')
+    .order('created_at', { ascending: false })
+
+  const { data: myPollVotes } = await supabase
+    .from('poll_votes')
+    .select('poll_id, option_id')
+    .eq('user_id', user.id)
+
   const isAdmin = user.email === process.env.ADMIN_EMAIL
 
   return (
@@ -36,6 +46,8 @@ export default async function Home() {
           rules={rules ?? []}
           suggestions={suggestions ?? []}
           myVotes={myVotes ?? []}
+          polls={polls ?? []}
+          myPollVotes={myPollVotes ?? []}
           userId={user.id}
           isAdmin={isAdmin}
         />
