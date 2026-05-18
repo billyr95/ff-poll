@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import RulesClient from '@/components/RulesClient'
+import MainClient from '@/components/MainClient'
 import NavBar from '@/components/NavBar'
 
 export default async function Home() {
@@ -8,23 +8,6 @@ export default async function Home() {
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) redirect('/login')
-
-  const { data: rules } = await supabase
-    .from('rules')
-    .select('*')
-    .eq('status', 'active')
-    .order('category')
-
-  const { data: suggestions } = await supabase
-    .from('suggestions')
-    .select('*, profiles(full_name, username), vote_tallies(*)')
-    .eq('status', 'open')
-    .order('created_at', { ascending: false })
-
-  const { data: myVotes } = await supabase
-    .from('votes')
-    .select('suggestion_id, vote')
-    .eq('user_id', user.id)
 
   const { data: polls } = await supabase
     .from('polls')
@@ -36,18 +19,21 @@ export default async function Home() {
     .select('poll_id, option_id')
     .eq('user_id', user.id)
 
+  const { data: suggestions } = await supabase
+    .from('suggestions')
+    .select('id, title, created_at, profiles(full_name, username)')
+    .order('created_at', { ascending: false })
+
   const isAdmin = user.email === process.env.ADMIN_EMAIL
 
   return (
     <div className="min-h-screen bg-gray-50">
       <NavBar user={user} />
       <main className="max-w-3xl mx-auto px-4 py-8">
-        <RulesClient
-          rules={rules ?? []}
-          suggestions={suggestions ?? []}
-          myVotes={myVotes ?? []}
+        <MainClient
           polls={polls ?? []}
           myPollVotes={myPollVotes ?? []}
+          suggestions={suggestions ?? []}
           userId={user.id}
           isAdmin={isAdmin}
         />
