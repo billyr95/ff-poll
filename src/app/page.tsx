@@ -24,8 +24,11 @@ export default async function Home() {
     .select('id, title, created_at, profiles(full_name, username)')
     .order('created_at', { ascending: false })
 
-  // Ensure profile exists for this user (handles users who signed up before the trigger)
-  await supabase.from('profiles').upsert({ id: user.id }, { onConflict: 'id', ignoreDuplicates: true })
+  // Ensure profile exists (no trigger — handled here instead)
+  await supabase.from('profiles').upsert(
+    { id: user.id, full_name: user.user_metadata?.full_name ?? null },
+    { onConflict: 'id', ignoreDuplicates: true }
+  )
 
   const isAdmin = user.email === process.env.ADMIN_EMAIL
 
