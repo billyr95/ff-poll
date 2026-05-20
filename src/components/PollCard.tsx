@@ -87,7 +87,7 @@ export default function PollCard({ poll, myVotedOptionId, userId, isAdmin, onRef
           const count = option.poll_votes.length
           const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0
           const isMyVote = myVotedOptionId === option.id
-          const showResults = hasVoted || isClosed
+          const showResults = isClosed || isAdmin
 
           return (
             <button
@@ -125,9 +125,10 @@ export default function PollCard({ poll, myVotedOptionId, userId, isAdmin, onRef
       </div>
 
       <p className="text-xs text-gray-400 mt-3">
-        {totalVotes} {totalVotes === 1 ? 'vote' : 'votes'}
-        {!hasVoted && !isClosed && ' · tap an option to vote'}
-        {hasVoted && !isClosed && ' · tap another option to change your vote'}
+        {isClosed ? `${totalVotes} ${totalVotes === 1 ? 'vote' : 'votes'} · final results` :
+         isAdmin ? `${totalVotes} ${totalVotes === 1 ? 'vote' : 'votes'} · results visible to you only` :
+         hasVoted ? 'Your vote is in · results revealed when poll closes' :
+         'Tap an option to vote'}
       </p>
     </div>
   )
