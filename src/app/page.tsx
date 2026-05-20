@@ -11,7 +11,7 @@ export default async function Home() {
 
   const { data: polls } = await supabase
     .from('polls')
-    .select('*, poll_options(id, text, sort_order, poll_votes(id, user_id))')
+    .select('*, closes_at, poll_options(id, text, sort_order, poll_votes(id, user_id))')
     .order('created_at', { ascending: false })
 
   const { data: myPollVotes } = await supabase

@@ -12,6 +12,7 @@ interface Props {
 export default function CreatePollForm({ userId, onClose, onSubmit }: Props) {
   const [question, setQuestion] = useState('')
   const [options, setOptions] = useState(['', ''])
+  const [closesAt, setClosesAt] = useState('')
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
 
@@ -35,7 +36,11 @@ export default function CreatePollForm({ userId, onClose, onSubmit }: Props) {
 
     const { data: poll, error } = await supabase
       .from('polls')
-      .insert({ question: question.trim(), created_by: userId })
+      .insert({
+        question: question.trim(),
+        created_by: userId,
+        closes_at: closesAt ? new Date(closesAt).toISOString() : null,
+      })
       .select()
       .single()
 
@@ -99,6 +104,18 @@ export default function CreatePollForm({ userId, onClose, onSubmit }: Props) {
                 + Add option
               </button>
             )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Voting deadline <span className="text-gray-400">(optional)</span>
+            </label>
+            <input
+              type="datetime-local"
+              value={closesAt}
+              onChange={e => setClosesAt(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
           </div>
 
           <div className="flex gap-2 pt-1">
